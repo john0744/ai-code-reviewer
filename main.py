@@ -1,9 +1,8 @@
 import os
-from google import genai  # <--- This must match the new library
+from google import genai
 from github import Github, Auth
 
 def run_review():
-    # 1. Capture Environment Variables
     api_key = os.getenv("GEMINI_API_KEY")
     github_token = os.getenv("GITHUB_TOKEN")
     repo_name = os.getenv("GITHUB_REPOSITORY")
@@ -14,10 +13,10 @@ def run_review():
         return
 
     try:
-        # 2. Setup Modern Gemini Client
+        # 1. Setup Modern Client
         client = genai.Client(api_key=api_key)
 
-        # 3. Setup GitHub
+        # 2. Setup GitHub
         auth = Auth.Token(github_token)
         g = Github(auth=auth)
         repo = g.get_repo(repo_name)
@@ -25,23 +24,24 @@ def run_review():
 
         print(f"🚀 Connected to {repo_name} PR #{pr_number}")
 
-        # 4. Review Files
         for file in pr.get_files():
             if file.filename.endswith('.py') and file.patch:
                 print(f"🔍 Analyzing {file.filename}...")
                 
-                # Generate AI Review using the new client syntax
+                # 3. USE THE FULL MODEL PATH
+                # Adding 'models/' here is the "Silver Bullet" for 404 errors
                 response = client.models.generate_content(
-                    model='gemini-1.5-flash',
+                    model='models/gemini-1.5-flash', 
                     contents=f"Review this Python code for bugs and O(n) complexity:\n\n{file.patch}"
                 )
                 
-                # Post the Comment
-                comment = f"### 🤖 AI Code Review: `{file.filename}`\n\n{response.text}"
-                pr.create_issue_comment(comment)
+                # 4. Post the Comment
+                comment_body = f"### 🤖 AI Code Review: `{file.filename}`\n\n{response.text}"
+                pr.create_issue_comment(comment_body)
                 print(f"✅ Comment posted successfully for {file.filename}")
 
     except Exception as e:
+        # This will now print the FULL error so we can see if it's still a 404
         print(f"❌ CRITICAL ERROR: {str(e)}")
 
 if __name__ == "__main__":
