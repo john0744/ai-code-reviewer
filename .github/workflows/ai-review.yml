@@ -17,11 +17,11 @@ jobs:
       
       - name: Run Reviewer
         env:
+          # These MUST match the os.getenv("NAME") in your main.py
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # These two lines below are CRITICAL so the script knows where it is
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          pip install google-generativeai PyGithub pydantic python-dotenv
+          pip install google-generativeai PyGithub
           python main.py
