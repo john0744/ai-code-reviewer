@@ -9,12 +9,16 @@ def run_review():
     pr_number = os.getenv("PR_NUMBER")
 
     if not all([api_key, github_token, repo_name, pr_number]):
-        print("❌ Error: Missing environment variables.")
+        print("❌ Error: Missing variables.")
         return
 
     try:
-        # 1. Setup Modern Client
-        client = genai.Client(api_key=api_key)
+        # 1. Setup Client and FORCE v1 (Stable) API
+        # This overrides the library's default 'v1beta' behavior
+        client = genai.Client(
+            api_key=api_key,
+            http_options={'api_version': 'v1'}
+        )
 
         # 2. Setup GitHub
         auth = Auth.Token(github_token)
@@ -28,20 +32,18 @@ def run_review():
             if file.filename.endswith('.py') and file.patch:
                 print(f"🔍 Analyzing {file.filename}...")
                 
-                # 3. USE THE FULL MODEL PATH
-                # Adding 'models/' here is the "Silver Bullet" for 404 errors
+                # 3. Use the specific model name
                 response = client.models.generate_content(
-                    model='models/gemini-1.5-flash', 
-                    contents=f"Review this Python code for bugs and O(n) complexity:\n\n{file.patch}"
+                    model='gemini-1.5-flash',
+                    contents=f"Review this code for DSA bugs:\n\n{file.patch}"
                 )
                 
                 # 4. Post the Comment
-                comment_body = f"### 🤖 AI Code Review: `{file.filename}`\n\n{response.text}"
-                pr.create_issue_comment(comment_body)
-                print(f"✅ Comment posted successfully for {file.filename}")
+                comment = f"### 🤖 AI Code Review: `{file.filename}`\n\n{response.text}"
+                pr.create_issue_comment(comment)
+                print(f"✅ Comment posted successfully!")
 
     except Exception as e:
-        # This will now print the FULL error so we can see if it's still a 404
         print(f"❌ CRITICAL ERROR: {str(e)}")
 
 if __name__ == "__main__":
