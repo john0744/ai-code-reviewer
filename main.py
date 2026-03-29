@@ -3,6 +3,7 @@ import google.generativeai as genai
 from github import Github, Auth
 
 def run_review():
+    # 1. Capture Environment Variables
     api_key = os.getenv("GEMINI_API_KEY")
     github_token = os.getenv("GITHUB_TOKEN")
     repo_name = os.getenv("GITHUB_REPOSITORY")
@@ -13,14 +14,14 @@ def run_review():
         return
 
     try:
-        # 1. Setup Gemini - FORCE VERSION v1
+        # 2. Setup Gemini - This configuration forces the stable v1 API
         genai.configure(api_key=api_key)
         
-        # Explicitly defining the model without the 'models/' prefix 
-        # often resolves the v1beta 404 error in the older library
+        # By not adding "models/" or using beta-specific flags, 
+        # the newer library defaults to the stable endpoint.
         model = genai.GenerativeModel('gemini-1.5-flash')
 
-        # 2. Setup GitHub
+        # 3. Setup GitHub
         auth = Auth.Token(github_token)
         g = Github(auth=auth)
         repo = g.get_repo(repo_name)
@@ -28,16 +29,17 @@ def run_review():
 
         print(f"🚀 Connected to {repo_name} PR #{pr_number}")
 
+        # 4. Review Files
         for file in pr.get_files():
             if file.filename.endswith('.py') and file.patch:
                 print(f"🔍 Analyzing {file.filename}...")
                 
-                # 3. Generate content
+                # Generate AI Review
                 response = model.generate_content(
-                    f"Review this Python code for DSA complexity and bugs:\n\n{file.patch}"
+                    f"Act as a Senior AI Engineer. Review this code for DSA and bugs:\n\n{file.patch}"
                 )
                 
-                # 4. Post Comment
+                # Post the Comment
                 comment = f"### 🤖 AI Code Review: `{file.filename}`\n\n{response.text}"
                 pr.create_issue_comment(comment)
                 print(f"✅ Comment posted successfully for {file.filename}")
