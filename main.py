@@ -1,7 +1,6 @@
 from github import Github
 import os
-from reviewer_logic import get_ai_review
-
+import get_ai_review
 # Purpose: Authenticate with GitHub using the token provided by the Action
 g = Github(os.getenv("GITHUB_TOKEN"))
 repo = g.get_repo(os.getenv("GITHUB_REPOSITORY"))
