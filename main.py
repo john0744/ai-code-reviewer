@@ -13,13 +13,13 @@ def run_review():
         return
 
     try:
-        # 1. Setup Gemini using the original library
+        # 1. Setup Gemini - Use the "Hardcoded" path
         genai.configure(api_key=api_key)
         
-        # Using the full path 'models/gemini-1.5-flash' 
-        # is the most 'universal' way to call this model.
-        model = genai.GenerativeModel('models/gemini-1.5-flash')
-
+        # This exact string 'models/gemini-1.5-flash' is the universal identifier
+        # that works for both v1 and v1beta endpoints.
+        # Change the model name to the one shown in your Playground list
+        model = genai.GenerativeModel('gemini-3-flash-preview')
         # 2. Setup GitHub
         auth = Auth.Token(github_token)
         g = Github(auth=auth)
