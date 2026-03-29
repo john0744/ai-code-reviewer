@@ -1,5 +1,5 @@
 import os
-from google import genai
+import google.generativeai as genai
 from github import Github, Auth
 
 def run_review():
@@ -13,11 +13,12 @@ def run_review():
         return
 
     try:
-        # 1. Setup Client and FORCE v1 (Stable) API
-        client = genai.Client(
-            api_key=api_key,
-            http_options={'api_version': 'v1'}
-        )
+        # 1. Setup Gemini using the original library
+        genai.configure(api_key=api_key)
+        
+        # Using the full path 'models/gemini-1.5-flash' 
+        # is the most 'universal' way to call this model.
+        model = genai.GenerativeModel('models/gemini-1.5-flash')
 
         # 2. Setup GitHub
         auth = Auth.Token(github_token)
@@ -31,10 +32,9 @@ def run_review():
             if file.filename.endswith('.py') and file.patch:
                 print(f"🔍 Analyzing {file.filename}...")
                 
-                # 3. USE 'gemini-1.5-flash' (No prefix) with v1 Stable
-                response = client.models.generate_content(
-                    model='gemini-1.5-flash',
-                    contents=f"Review this Python code for bugs and DSA complexity:\n\n{file.patch}"
+                # 3. Generate content
+                response = model.generate_content(
+                    f"Review this Python code for bugs and DSA complexity:\n\n{file.patch}"
                 )
                 
                 # 4. Post the Comment
