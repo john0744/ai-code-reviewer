@@ -2,40 +2,53 @@ import os
 import google.generativeai as genai
 from github import Github
 
-# 1. Setup
+# 1. Configuration & Setup
 try:
-    # Get environment variables
-    api_key = os.getenv("GEMINI_API_KEY")
-    github_token = os.getenv("GITHUB_TOKEN")
-    repo_name = os.getenv("GITHUB_REPOSITORY")
-    pr_number_str = os.getenv("PR_NUMBER")
+    # Fetch secrets from environment variables
+    GEMINI_KEY = os.getenv("GEMINI_API_KEY")
+    GH_TOKEN = os.getenv("GITHUB_TOKEN")
+    REPO_NAME = os.getenv("GITHUB_REPOSITORY")
+    PR_NUM = os.getenv("PR_NUMBER")
 
-    if not api_key or not github_token:
-        raise ValueError("Missing API Keys in GitHub Secrets!")
+    if not all([GEMINI_KEY, GH_TOKEN, REPO_NAME, PR_NUM]):
+        print("ERROR: One or more environment variables are missing.")
+        exit(1)
 
-    # Configure Gemini
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    # Initialize Gemini
+    genai.configure(api_key=GEMINI_KEY)
+    ai_model = genai.GenerativeModel('gemini-1.5-flash')
 
-    # Configure GitHub
-    g = Github(github_token)
-    repo = g.get_repo(repo_name)
-    pr = repo.get_pull(int(pr_number_str))
+    # Initialize GitHub
+    git_client = Github(GH_TOKEN)
+    target_repo = git_client.get_repo(REPO_NAME)
+    pull_req = target_repo.get_pull(int(PR_NUM))
 
-    print(f"Connected to PR #{pr_number_str} successfully.")
+    print(f"Successfully connected to {REPO_NAME} PR #{PR_NUM}")
 
-    # 2. Review Logic
-    for file in pr.get_files():
-        if file.filename.endswith('.py') and file.patch:
-            print(f"Reviewing {file.filename}...")
-            prompt = f"Act as a Senior AI Engineer. Review this code diff for DSA efficiency and security bugs: {file.patch}"
-            
-            response = model.generate_content(prompt)
-            
-            # Post the comment
-            pr.create_issue_comment(f"### 🤖 AI Review for `{file.filename}`\n\n{response.text}")
-            print(f"Comment posted for {file.filename}!")
-
-except Exception as e:
-    print(f"CRITICAL ERROR: {e}")
+except Exception as setup_err:
+    print(f"SETUP CRITICAL ERROR: {setup_err}")
     exit(1)
+
+# 2. Review Execution
+for file in pull_req.get_files():
+    # Only review Python files that have actual changes (a 'patch')
+    if file.filename.endswith('.py') and file.patch:
+        print(f"AI is analyzing: {file.filename}...")
+        try:
+            prompt = (
+                "Act as a Senior Software Engineer. Review the following code change (diff) "
+                "for logic errors, security risks, and time complexity issues. "
+                f"File: {file.filename}\n\n{file.patch}"
+            )
+            
+            ai_response = ai_model.generate_content(prompt)
+            
+            # Post the AI's feedback as a comment on the PR
+            comment_body = f"### 🤖 AI Code Review: `{file.filename}`\n\n{ai_response.text}"
+            pull_req.create_issue_comment(comment_body)
+            print(f"Comment posted for {file.filename}")
+
+        except Exception as ai_err:
+            print(f"ERROR DURING AI REVIEW FOR {file.filename}: {ai_err}")
+
+print("Review process completed.")
