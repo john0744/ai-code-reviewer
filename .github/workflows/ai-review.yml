@@ -26,5 +26,5 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          pip install google-genai PyGithub
+          pip install --upgrade google-generativeai PyGithub
           python main.py

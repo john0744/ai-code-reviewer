@@ -1,5 +1,5 @@
 import os
-from google import genai
+import google.generativeai as genai
 from github import Github, Auth
 
 def run_review():
@@ -9,12 +9,16 @@ def run_review():
     pr_number = os.getenv("PR_NUMBER")
 
     if not all([api_key, github_token, repo_name, pr_number]):
-        print("Error: Missing environment variables.")
+        print("❌ Error: Missing environment variables.")
         return
 
     try:
-        # 1. Setup Modern Gemini Client
-        client = genai.Client(api_key=api_key)
+        # 1. Setup Gemini - FORCE VERSION v1
+        genai.configure(api_key=api_key)
+        
+        # Explicitly defining the model without the 'models/' prefix 
+        # often resolves the v1beta 404 error in the older library
+        model = genai.GenerativeModel('gemini-1.5-flash')
 
         # 2. Setup GitHub
         auth = Auth.Token(github_token)
@@ -28,15 +32,15 @@ def run_review():
             if file.filename.endswith('.py') and file.patch:
                 print(f"🔍 Analyzing {file.filename}...")
                 
-                # 3. Generate content using the new client syntax
-                response = client.models.generate_content(
-                    model='gemini-1.5-flash',
-                    contents=f"Review this Python code for DSA complexity and bugs:\n\n{file.patch}"
+                # 3. Generate content
+                response = model.generate_content(
+                    f"Review this Python code for DSA complexity and bugs:\n\n{file.patch}"
                 )
                 
+                # 4. Post Comment
                 comment = f"### 🤖 AI Code Review: `{file.filename}`\n\n{response.text}"
                 pr.create_issue_comment(comment)
-                print(f"✅ Comment posted for {file.filename}")
+                print(f"✅ Comment posted successfully for {file.filename}")
 
     except Exception as e:
         print(f"❌ CRITICAL ERROR: {str(e)}")
