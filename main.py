@@ -1,17 +1,41 @@
-from github import Github
 import os
-import get_ai_review
-# Purpose: Authenticate with GitHub using the token provided by the Action
-g = Github(os.getenv("GITHUB_TOKEN"))
-repo = g.get_repo(os.getenv("GITHUB_REPOSITORY"))
+import google.generativeai as genai
+from github import Github
 
-# Purpose: Get the changes from the latest Pull Request
-pull_request = repo.get_pull(int(os.getenv("PR_NUMBER")))
-commits = pull_request.get_commits()
+# 1. Setup
+try:
+    # Get environment variables
+    api_key = os.getenv("GEMINI_API_KEY")
+    github_token = os.getenv("GITHUB_TOKEN")
+    repo_name = os.getenv("GITHUB_REPOSITORY")
+    pr_number_str = os.getenv("PR_NUMBER")
 
-for commit in commits:
-    for file in commit.files:
-        # Send the file changes to our AI Brain
-        review = get_ai_review(file.patch)
-        # Purpose: Post the result as a comment on the PR
-        pull_request.create_issue_comment(f"AI Review for {file.filename}:\n{review}")
+    if not api_key or not github_token:
+        raise ValueError("Missing API Keys in GitHub Secrets!")
+
+    # Configure Gemini
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel('gemini-1.5-flash')
+
+    # Configure GitHub
+    g = Github(github_token)
+    repo = g.get_repo(repo_name)
+    pr = repo.get_pull(int(pr_number_str))
+
+    print(f"Connected to PR #{pr_number_str} successfully.")
+
+    # 2. Review Logic
+    for file in pr.get_files():
+        if file.filename.endswith('.py') and file.patch:
+            print(f"Reviewing {file.filename}...")
+            prompt = f"Act as a Senior AI Engineer. Review this code diff for DSA efficiency and security bugs: {file.patch}"
+            
+            response = model.generate_content(prompt)
+            
+            # Post the comment
+            pr.create_issue_comment(f"### 🤖 AI Review for `{file.filename}`\n\n{response.text}")
+            print(f"Comment posted for {file.filename}!")
+
+except Exception as e:
+    print(f"CRITICAL ERROR: {e}")
+    exit(1)
