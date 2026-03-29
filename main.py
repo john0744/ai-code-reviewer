@@ -1,5 +1,5 @@
 import os
-import google.generativeai as genai
+from google import genai  # <--- This must match the new library
 from github import Github, Auth
 
 def run_review():
@@ -14,12 +14,8 @@ def run_review():
         return
 
     try:
-        # 2. Setup Gemini - This configuration forces the stable v1 API
-        genai.configure(api_key=api_key)
-        
-        # By not adding "models/" or using beta-specific flags, 
-        # the newer library defaults to the stable endpoint.
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # 2. Setup Modern Gemini Client
+        client = genai.Client(api_key=api_key)
 
         # 3. Setup GitHub
         auth = Auth.Token(github_token)
@@ -34,9 +30,10 @@ def run_review():
             if file.filename.endswith('.py') and file.patch:
                 print(f"🔍 Analyzing {file.filename}...")
                 
-                # Generate AI Review
-                response = model.generate_content(
-                    f"Act as a Senior AI Engineer. Review this code for DSA and bugs:\n\n{file.patch}"
+                # Generate AI Review using the new client syntax
+                response = client.models.generate_content(
+                    model='gemini-1.5-flash',
+                    contents=f"Review this Python code for bugs and O(n) complexity:\n\n{file.patch}"
                 )
                 
                 # Post the Comment
