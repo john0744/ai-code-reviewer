@@ -9,12 +9,11 @@ def run_review():
     pr_number = os.getenv("PR_NUMBER")
 
     if not all([api_key, github_token, repo_name, pr_number]):
-        print("❌ Error: Missing variables.")
+        print("❌ Error: Missing environment variables.")
         return
 
     try:
         # 1. Setup Client and FORCE v1 (Stable) API
-        # This overrides the library's default 'v1beta' behavior
         client = genai.Client(
             api_key=api_key,
             http_options={'api_version': 'v1'}
@@ -32,10 +31,10 @@ def run_review():
             if file.filename.endswith('.py') and file.patch:
                 print(f"🔍 Analyzing {file.filename}...")
                 
-                # 3. Use the specific model name
+                # 3. USE 'gemini-1.5-flash' (No prefix) with v1 Stable
                 response = client.models.generate_content(
                     model='gemini-1.5-flash',
-                    contents=f"Review this code for DSA bugs:\n\n{file.patch}"
+                    contents=f"Review this Python code for bugs and DSA complexity:\n\n{file.patch}"
                 )
                 
                 # 4. Post the Comment
